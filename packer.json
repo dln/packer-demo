@@ -1,0 +1,44 @@
+{
+  "builders": [{
+    "type": "amazon-instance",
+    "access_key": "????",
+    "secret_key": "????",
+    "region": "eu-west-1",
+    "x509_cert_path": "packer/cert.pem",
+    "x509_key_path": "packer/key.pem",
+    "account_id": "6957-6995-3266",
+    "s3_bucket": "futurelearn-ami",
+    "source_ami": "ami-e21afa95",
+    "instance_type": "m1.small",
+    "ssh_username": "ubuntu",
+    "ami_name": "futurelearn-app-{{timestamp}}",
+    "user_data_file": "packer/cloud-init",
+    "bundle_vol_command": "sudo -n ec2-bundle-vol -k {{.KeyPath}} -u {{.AccountId}} -c {{.CertPath}} -r {{.Architecture}} -e {{.PrivatePath}} -d {{.Destination}} -p {{.Prefix}} --batch -e /mnt"
+  }],
+  "provisioners": [
+    {
+      "type": "file",
+      "source": "nodes/futurelearn-production.json",
+      "destination": "/tmp/futurelearn-production.json"
+    },
+    {
+      "type": "chef-solo",
+      "cookbook_paths": [
+        "cookbooks", "site-cookbooks"
+      ],
+      "roles_path": "roles",
+      "execute_command": "sudo chef-solo --no-color -c {{.ConfigPath}} -j /tmp/futurelearn-production.json"
+    },
+    {
+      "type": "shell",
+      "execute_command": "echo $USER | {{ .Vars }} sudo -S -E sh '{{.Path}}'",
+      "scripts": [
+        "packer/amazon.sh",
+        "packer/cleanup.sh"
+      ]
+    }
+  ],
+  "variables": {
+    "JsonPath": "/tmp/futurelearn-production.json"
+  }
+}
